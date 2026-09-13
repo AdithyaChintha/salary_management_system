@@ -1,0 +1,2 @@
+"""Salary management backend package."""
+
