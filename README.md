@@ -89,4 +89,6 @@ npm run build
 
 ## Current scope
 
-The project includes a single PostgreSQL schema script and deterministic demo data for 10,000 employees. Employee APIs and analytics remain unimplemented.
+The project includes a single PostgreSQL schema script and deterministic demo data for 10,000
+employees. The employee service and PostgreSQL repository implement employee lifecycle and
+salary-normalization behavior. Employee HTTP APIs and analytics remain unimplemented.

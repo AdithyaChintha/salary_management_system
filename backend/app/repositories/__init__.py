@@ -1,2 +1,1 @@
-"""Persistence adapters will be added here."""
-
+"""Persistence adapters for the application."""

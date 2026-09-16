@@ -1,2 +1,1 @@
-"""Application services will be added here."""
-
+"""Business services for the application."""

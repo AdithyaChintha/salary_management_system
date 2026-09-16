@@ -6,7 +6,9 @@ The system starts as a single FastAPI backend, a React single-page application, 
 
 ## Backend boundaries
 
-The backend package reserves separate areas for API routing, configuration, database infrastructure, schemas, services, and repositories. These packages are intentionally empty until their business contracts are designed.
+The backend separates API routing, configuration, database infrastructure, schemas, services,
+and repositories. The employee service owns lifecycle, validation, and salary-normalization rules,
+while its repository contract isolates those rules from PostgreSQL and future HTTP handlers.
 
 ## Frontend boundaries
 
