@@ -9,6 +9,7 @@ htmlcov/
 
 node_modules/
 dist/
+*.tsbuildinfo
 coverage/
 *.local
 
@@ -16,4 +17,3 @@ coverage/
 .vscode/
 .DS_Store
 Thumbs.db
-

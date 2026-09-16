@@ -95,3 +95,9 @@ salary normalization. Employee CRUD and paginated search are available under `/a
 The analytics service calculates active-workforce totals, distributions, and quartile pay bands
 with PostgreSQL-side aggregation. `GET /api/v1/analytics/dashboard` returns all dashboard metrics
 using optional `country`, `department`, `min_salary_usd`, and `max_salary_usd` query filters.
+
+The frontend now provides employee search, filters, sorting, pagination, creation, editing,
+deactivation, and reactivation. It calls `http://localhost:8000/api/v1` by default; override this
+with `VITE_API_BASE_URL` when needed. Country and department form choices mirror the demo seed
+data. The backend must be running for the employee screen to load records. Analytics charts are
+not included yet.
