@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from app.repositories.employee import (
     DuplicateEmployeeIdConflict,
+    EmployeeListQuery,
+    EmployeePage,
     EmployeeRecord,
     EmployeeRepository,
     EmployeeWrite,
@@ -66,6 +68,25 @@ class UpdateEmployee:
 class EmployeeService:
     def __init__(self, repository: EmployeeRepository) -> None:
         self.repository = repository
+
+    def list_employees(self, query: EmployeeListQuery) -> EmployeePage:
+        if query.sort_by not in {"name", "employee_id", "salary_usd", "created_at"}:
+            raise InvalidEmployeeError("Unsupported sort_by value")
+        if query.sort_order not in {"asc", "desc"}:
+            raise InvalidEmployeeError("sort_order must be asc or desc")
+        if query.page < 1 or not 1 <= query.page_size <= 100:
+            raise InvalidEmployeeError("page must be positive and page_size must be 1-100")
+        if query.min_salary_usd is not None and query.min_salary_usd < 0:
+            raise InvalidEmployeeError("min_salary_usd must be nonnegative")
+        if query.max_salary_usd is not None and query.max_salary_usd < 0:
+            raise InvalidEmployeeError("max_salary_usd must be nonnegative")
+        if (
+            query.min_salary_usd is not None
+            and query.max_salary_usd is not None
+            and query.min_salary_usd > query.max_salary_usd
+        ):
+            raise InvalidEmployeeError("min_salary_usd cannot exceed max_salary_usd")
+        return self.repository.list(query)
 
     def create_employee(self, request: CreateEmployee) -> EmployeeRecord:
         employee_id = self._required_text(request.employee_id, "employee_id")
@@ -168,28 +189,34 @@ class EmployeeService:
         annual_salary_native: Decimal,
         currency: str,
     ) -> EmployeeWrite:
-        normalized_country, normalized_currency = self.validate_country_currency(
-            country, currency
-        )
+        normalized_country, normalized_currency = self.validate_country_currency(country, currency)
         salary = self._positive_money(annual_salary_native)
         rate = self.repository.get_fx_rate(normalized_currency)
         if rate is None or rate <= 0:
             raise InvalidCountryCurrencyError(
                 f"No positive USD exchange rate exists for {normalized_currency}"
             )
+        salary_usd = (salary * rate).quantize(MONEY_PLACES, rounding=ROUND_HALF_UP)
+        if salary_usd <= 0:
+            raise InvalidEmployeeError("Converted USD salary must be greater than zero")
+        normalized_department = self._required_text(department, "department")
+        if not self.repository.department_exists(normalized_department):
+            raise InvalidEmployeeError(f"Unknown department: {normalized_department}")
         return EmployeeWrite(
             employee_id=self._required_text(employee_id, "employee_id"),
             name=self._required_text(name, "name"),
             country=normalized_country,
-            department=self._required_text(department, "department"),
+            department=normalized_department,
             role=self._required_text(role, "role"),
             annual_salary_native=salary,
             currency=normalized_currency,
-            salary_usd=(salary * rate).quantize(MONEY_PLACES, rounding=ROUND_HALF_UP),
+            salary_usd=salary_usd,
         )
 
     @staticmethod
     def _required_text(value: str, field: str) -> str:
+        if not isinstance(value, str):
+            raise InvalidEmployeeError(f"{field} must be text")
         normalized = value.strip()
         if not normalized:
             raise InvalidEmployeeError(f"{field} must not be blank")

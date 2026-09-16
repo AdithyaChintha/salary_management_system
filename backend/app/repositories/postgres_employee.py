@@ -11,6 +11,8 @@ from psycopg.rows import dict_row
 
 from app.repositories.employee import (
     DuplicateEmployeeIdConflict,
+    EmployeeListQuery,
+    EmployeePage,
     EmployeeRecord,
     EmployeeWrite,
 )
@@ -21,6 +23,55 @@ class PostgresEmployeeRepository:
 
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
+
+    def list(self, query: EmployeeListQuery) -> EmployeePage:
+        conditions: list[str] = []
+        params: list[object] = []
+        if query.search:
+            conditions.append("(e.name ILIKE %s OR e.employee_id ILIKE %s)")
+            pattern = f"%{query.search}%"
+            params.extend((pattern, pattern))
+        if query.country:
+            conditions.append("(c.code ILIKE %s OR c.name ILIKE %s)")
+            params.extend((query.country, query.country))
+        if query.department:
+            conditions.append("e.department = %s")
+            params.append(query.department)
+        if query.is_active is not None:
+            conditions.append("e.is_active = %s")
+            params.append(query.is_active)
+        if query.min_salary_usd is not None:
+            conditions.append("e.salary_usd >= %s")
+            params.append(query.min_salary_usd)
+        if query.max_salary_usd is not None:
+            conditions.append("e.salary_usd <= %s")
+            params.append(query.max_salary_usd)
+        where = " WHERE " + " AND ".join(conditions) if conditions else ""
+        # These identifiers are selected by the service from fixed allowlists.
+        sort_column = {
+            "name": "e.name",
+            "employee_id": "e.employee_id",
+            "salary_usd": "e.salary_usd",
+            "created_at": "e.created_at",
+        }[query.sort_by]
+        direction = "DESC" if query.sort_order == "desc" else "ASC"
+        join = " FROM employees e JOIN countries c ON c.code = e.country"
+        with self._connect() as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT count(*) AS total" + join + where, params)
+            count_row = cursor.fetchone()
+            cursor.execute(
+                "SELECT e.*"
+                + join
+                + where
+                + f" ORDER BY {sort_column} {direction}, e.id ASC LIMIT %s OFFSET %s",
+                [*params, query.page_size, (query.page - 1) * query.page_size],
+            )
+            return EmployeePage(
+                items=[self._to_record(row) for row in cursor.fetchall()],
+                total=int(count_row["total"]),
+                page=query.page,
+                page_size=query.page_size,
+            )
 
     def get_by_employee_id(self, employee_id: str) -> EmployeeRecord | None:
         with self._connect() as connection, connection.cursor() as cursor:
@@ -51,6 +102,15 @@ class PostgresEmployeeRepository:
             cursor.execute("SELECT rate_to_usd FROM fx_rates WHERE currency = %s", (currency,))
             row = cursor.fetchone()
             return Decimal(row["rate_to_usd"]) if row else None
+
+    def department_exists(self, department: str) -> bool:
+        with self._connect() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT EXISTS (SELECT 1 FROM departments WHERE name = %s)",
+                (department,),
+            )
+            row = cursor.fetchone()
+            return bool(row and row["exists"])
 
     def create(self, employee: EmployeeWrite) -> EmployeeRecord:
         try:
@@ -141,4 +201,6 @@ class PostgresEmployeeRepository:
 
     @staticmethod
     def _to_record(row: Mapping[str, Any]) -> EmployeeRecord:
-        return EmployeeRecord(**{field: row[field] for field in EmployeeRecord.__dataclass_fields__})
+        return EmployeeRecord(
+            **{field: row[field] for field in EmployeeRecord.__dataclass_fields__}
+        )

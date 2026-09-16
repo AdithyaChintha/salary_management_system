@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.repositories.employee import EmployeeRecord, EmployeeWrite
+from app.repositories.employee import EmployeeListQuery, EmployeePage, EmployeeRecord, EmployeeWrite
 from app.services.employee import (
     CreateEmployee,
     DuplicateEmployeeIdError,
@@ -28,6 +28,34 @@ class FakeEmployeeRepository:
     def get_by_employee_id(self, employee_id: str) -> EmployeeRecord | None:
         return self.employees.get(employee_id)
 
+    def list(self, query: EmployeeListQuery) -> EmployeePage:
+        records = list(self.employees.values())
+        if query.search:
+            search = query.search.lower()
+            records = [
+                e for e in records if search in e.name.lower() or search in e.employee_id.lower()
+            ]
+        if query.country:
+            country = {"India": "IN", "United States": "US"}.get(query.country, query.country)
+            records = [e for e in records if e.country.lower() == country.lower()]
+        if query.department:
+            records = [e for e in records if e.department == query.department]
+        if query.is_active is not None:
+            records = [e for e in records if e.is_active == query.is_active]
+        if query.min_salary_usd is not None:
+            records = [e for e in records if e.salary_usd >= query.min_salary_usd]
+        if query.max_salary_usd is not None:
+            records = [e for e in records if e.salary_usd <= query.max_salary_usd]
+        records.sort(
+            key=lambda e: (getattr(e, query.sort_by), e.id), reverse=query.sort_order == "desc"
+        )
+        return EmployeePage(
+            records[(query.page - 1) * query.page_size : query.page * query.page_size],
+            len(records),
+            query.page,
+            query.page_size,
+        )
+
     def employee_id_exists(self, employee_id: str) -> bool:
         return employee_id in self.employees
 
@@ -36,6 +64,9 @@ class FakeEmployeeRepository:
 
     def get_fx_rate(self, currency: str) -> Decimal | None:
         return self.fx_rates.get(currency)
+
+    def department_exists(self, department: str) -> bool:
+        return department in {"Engineering", "Finance"}
 
     def create(self, employee: EmployeeWrite) -> EmployeeRecord:
         now = datetime.now(UTC)
@@ -116,9 +147,7 @@ def test_create_rejects_duplicate_employee_id(service: EmployeeService) -> None:
 
 
 @pytest.mark.parametrize("salary", [Decimal("0"), Decimal("-1"), Decimal("NaN")])
-def test_create_rejects_invalid_salary(
-    service: EmployeeService, salary: Decimal
-) -> None:
+def test_create_rejects_invalid_salary(service: EmployeeService, salary: Decimal) -> None:
     with pytest.raises(InvalidEmployeeError):
         service.create_employee(employee_request(annual_salary_native=salary))
 

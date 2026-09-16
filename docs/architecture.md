@@ -9,6 +9,9 @@ The system starts as a single FastAPI backend, a React single-page application, 
 The backend separates API routing, configuration, database infrastructure, schemas, services,
 and repositories. The employee service owns lifecycle, validation, and salary-normalization rules,
 while its repository contract isolates those rules from PostgreSQL and future HTTP handlers.
+The employee API validates request shapes with Pydantic and delegates business decisions to the
+service. PostgreSQL performs filtered, sorted, paginated employee listing; API errors use a stable
+`error.code` and `error.message` structure.
 
 ## Frontend boundaries
 

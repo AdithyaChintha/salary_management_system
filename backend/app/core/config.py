@@ -5,7 +5,6 @@ from typing import Annotated
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -15,10 +14,13 @@ class Settings(BaseSettings):
     app_name: str = "Salary Management API"
     app_env: str = "development"
     api_v1_prefix: str = "/api/v1"
-    database_url: str = (
-        "postgresql://salary_user:salary_password@localhost:5432/salary_management"
-    )
+    database_url: str = "postgresql://salary_user:salary_password@localhost:5432/salary_management"
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+
+    @field_validator("database_url")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        return value.replace("postgresql+psycopg://", "postgresql://", 1)
 
     @field_validator("cors_origins", mode="before")
     @classmethod

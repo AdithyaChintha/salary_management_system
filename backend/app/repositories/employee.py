@@ -35,11 +35,34 @@ class EmployeeWrite:
     salary_usd: Decimal
 
 
+@dataclass(frozen=True)
+class EmployeeListQuery:
+    search: str | None = None
+    country: str | None = None
+    department: str | None = None
+    is_active: bool | None = None
+    min_salary_usd: Decimal | None = None
+    max_salary_usd: Decimal | None = None
+    page: int = 1
+    page_size: int = 25
+    sort_by: str = "name"
+    sort_order: str = "asc"
+
+
+@dataclass(frozen=True)
+class EmployeePage:
+    items: list[EmployeeRecord]
+    total: int
+    page: int
+    page_size: int
+
+
 class DuplicateEmployeeIdConflict(Exception):
     """The database rejected an employee ID that is already in use."""
 
 
 class EmployeeRepository(Protocol):
+    def list(self, query: EmployeeListQuery) -> EmployeePage: ...
     def get_by_employee_id(self, employee_id: str) -> EmployeeRecord | None: ...
 
     def employee_id_exists(self, employee_id: str) -> bool: ...
@@ -47,6 +70,8 @@ class EmployeeRepository(Protocol):
     def get_country_currency(self, country: str) -> str | None: ...
 
     def get_fx_rate(self, currency: str) -> Decimal | None: ...
+
+    def department_exists(self, department: str) -> bool: ...
 
     def create(self, employee: EmployeeWrite) -> EmployeeRecord: ...
 
