@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.services.analytics import InvalidAnalyticsFiltersError
 from app.services.employee import (
     DuplicateEmployeeIdError,
     EmployeeNotFoundError,
@@ -48,10 +49,18 @@ def validation_error_response(_request, error: RequestValidationError) -> JSONRe
     )
 
 
+def analytics_filter_error_response(_request, error: InvalidAnalyticsFiltersError) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"error": {"code": "invalid_analytics_filters", "message": str(error)}},
+    )
+
+
 def create_app() -> FastAPI:
     application = FastAPI(title=settings.app_name, version="0.1.0")
     application.add_exception_handler(EmployeeServiceError, employee_error_response)
     application.add_exception_handler(RequestValidationError, validation_error_response)
+    application.add_exception_handler(InvalidAnalyticsFiltersError, analytics_filter_error_response)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

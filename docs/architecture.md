@@ -34,11 +34,14 @@ department, and inclusive USD salary filters apply to every calculation. Mean an
 cutoffs are rounded to cents for output; band membership uses unrounded percentile cutoffs.
 Band intervals are `[min, p25]`, `(p25, p50]`, `(p50, p75]`, and `(p75, max]`, so equal
 salaries can make band headcounts uneven. An empty population returns zero headcount/payroll,
-null salary statistics, and empty distributions.
+null salary statistics, and empty distributions. The single dashboard endpoint at
+`GET /api/v1/analytics/dashboard` returns a summary, both distributions, all four pay bands,
+quartile cutoffs, and salary extrema. Monetary values are JSON decimal strings, matching the
+employee API and preserving cents exactly.
 
 ## Deferred decisions
 
 - API resource contracts and error schema
-- Analytics HTTP contracts and dashboard design
+- Dashboard presentation and interaction design
 - Authentication and authorization (out of MVP scope)
 - Production packaging and deployment
