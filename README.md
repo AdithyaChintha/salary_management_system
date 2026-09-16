@@ -92,4 +92,5 @@ npm run build
 The project includes a single PostgreSQL schema script and deterministic demo data for 10,000
 employees. The employee service and PostgreSQL repository implement employee lifecycle and
 salary normalization. Employee CRUD and paginated search are available under `/api/v1/employees`.
-Analytics remain unimplemented.
+The analytics service now calculates active-workforce totals, distributions, and quartile pay
+bands with PostgreSQL-side aggregation; dashboard endpoints remain to be added.

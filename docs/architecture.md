@@ -27,9 +27,18 @@ PostgreSQL tables and constraints will be defined in one SQL schema script. The 
 parameterized `psycopg` queries directly, so no ORM model layer is required. Request validation
 will live in Pydantic schemas, while PostgreSQL constraints remain the final integrity safeguard.
 
+## Analytics
+
+The analytics repository aggregates only active employees in PostgreSQL. Country (code or name),
+department, and inclusive USD salary filters apply to every calculation. Mean and percentile
+cutoffs are rounded to cents for output; band membership uses unrounded percentile cutoffs.
+Band intervals are `[min, p25]`, `(p25, p50]`, `(p50, p75]`, and `(p75, max]`, so equal
+salaries can make band headcounts uneven. An empty population returns zero headcount/payroll,
+null salary statistics, and empty distributions.
+
 ## Deferred decisions
 
 - API resource contracts and error schema
-- Analytics query design
+- Analytics HTTP contracts and dashboard design
 - Authentication and authorization (out of MVP scope)
 - Production packaging and deployment
