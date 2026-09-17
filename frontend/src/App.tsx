@@ -207,7 +207,7 @@ export function App() {
                     <h2>Employee directory</h2>
                     <p>Search and filter your workforce records.</p>
                   </div>
-                  <span className="count-pill">{total} records</span>
+                  <span className="count-pill">{loading ? "Loading…" : `${total} records`}</span>
                 </div>
                 <div className="filters">
                   <label className="search-field">
@@ -300,7 +300,15 @@ export function App() {
                   <table>
                     <thead>
                       <tr>
-                        <th>
+                        <th
+                          aria-sort={
+                            query.sort_by === "name"
+                              ? query.sort_order === "asc"
+                                ? "ascending"
+                                : "descending"
+                              : "none"
+                          }
+                        >
                           <button onClick={() => sort("name")}>
                             Employee{" "}
                             {query.sort_by === "name"
@@ -310,7 +318,15 @@ export function App() {
                               : "↕"}
                           </button>
                         </th>
-                        <th>
+                        <th
+                          aria-sort={
+                            query.sort_by === "employee_id"
+                              ? query.sort_order === "asc"
+                                ? "ascending"
+                                : "descending"
+                              : "none"
+                          }
+                        >
                           <button onClick={() => sort("employee_id")}>
                             Employee ID{" "}
                             {query.sort_by === "employee_id"
@@ -323,7 +339,15 @@ export function App() {
                         <th>Country</th>
                         <th>Department</th>
                         <th>Role</th>
-                        <th>
+                        <th
+                          aria-sort={
+                            query.sort_by === "salary_usd"
+                              ? query.sort_order === "asc"
+                                ? "ascending"
+                                : "descending"
+                              : "none"
+                          }
+                        >
                           <button onClick={() => sort("salary_usd")}>
                             Salary (USD){" "}
                             {query.sort_by === "salary_usd"
@@ -415,7 +439,9 @@ export function App() {
                 </div>
                 <footer className="table-footer">
                   <span>
-                    Showing {first}–{last} of {total} employees
+                    {loading
+                      ? "Loading employees…"
+                      : `Showing ${first}–${last} of ${total} employees`}
                   </span>
                   <div className="pager">
                     <label>
@@ -438,9 +464,7 @@ export function App() {
                     >
                       ‹
                     </button>
-                    <span>
-                      Page {query.page} of {totalPages}
-                    </span>
+                    <span>{loading ? "Page loading…" : `Page ${query.page} of ${totalPages}`}</span>
                     <button
                       aria-label="Next page"
                       disabled={query.page >= totalPages || loading}

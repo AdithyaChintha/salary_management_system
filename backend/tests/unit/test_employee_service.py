@@ -82,16 +82,20 @@ class FakeEmployeeRepository:
         self.employees[employee.employee_id] = record
         return record
 
-    def update(self, employee_id: str, employee: EmployeeWrite) -> EmployeeRecord:
+    def update(self, employee_id: str, employee: EmployeeWrite) -> EmployeeRecord | None:
         current = self.employees[employee_id]
+        if not current.is_active:
+            return None
         record = replace(current, **employee.__dict__, updated_at=datetime.now(UTC))
         self.employees[employee_id] = record
         return record
 
     def set_active(
         self, employee_id: str, *, is_active: bool, changed_at: datetime
-    ) -> EmployeeRecord:
+    ) -> EmployeeRecord | None:
         current = self.employees[employee_id]
+        if current.is_active == is_active:
+            return None
         record = replace(
             current,
             is_active=is_active,
@@ -229,3 +233,36 @@ def test_recalculate_uses_latest_fx_rate(
     updated = service.recalculate_salary_usd("EMP-001")
 
     assert updated.salary_usd == Decimal("13500.00")
+
+
+def test_update_rejects_deactivation_between_read_and_write(
+    service: EmployeeService, repository: FakeEmployeeRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service.create_employee(employee_request())
+    original_update = repository.update
+
+    def concurrent_deactivation(employee_id: str, write: EmployeeWrite) -> EmployeeRecord | None:
+        repository.set_active(employee_id, is_active=False, changed_at=datetime.now(UTC))
+        return original_update(employee_id, write)
+
+    monkeypatch.setattr(repository, "update", concurrent_deactivation)
+    with pytest.raises(InactiveEmployeeError):
+        service.update_employee("EMP-001", UpdateEmployee(name="Too late"))
+    assert repository.employees["EMP-001"].name == "Ada Lovelace"
+
+
+def test_status_change_rejects_concurrent_same_transition(
+    service: EmployeeService, repository: FakeEmployeeRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service.create_employee(employee_request())
+    original_set_active = repository.set_active
+
+    def concurrent_transition(
+        employee_id: str, *, is_active: bool, changed_at: datetime
+    ) -> EmployeeRecord | None:
+        original_set_active(employee_id, is_active=is_active, changed_at=changed_at)
+        return original_set_active(employee_id, is_active=is_active, changed_at=changed_at)
+
+    monkeypatch.setattr(repository, "set_active", concurrent_transition)
+    with pytest.raises(EmployeeStateError):
+        service.deactivate_employee("EMP-001")

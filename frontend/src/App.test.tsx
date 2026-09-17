@@ -136,6 +136,23 @@ it("keeps employee ID fixed during edit", async () => {
   expect(vi.mocked(updateEmployee).mock.calls[0][1]).not.toHaveProperty("employee_id");
 });
 
+it("keeps keyboard focus in the form and restores it after Escape", async () => {
+  const user = userEvent.setup();
+  renderEmployeeScreen();
+  await screen.findByText("Rahul Sharma");
+  const openButton = screen.getByRole("button", { name: /add employee/i });
+  await user.click(openButton);
+  const dialog = screen.getByRole("dialog");
+  expect(within(dialog).getByLabelText("Employee ID")).toHaveFocus();
+
+  within(dialog).getByRole("button", { name: "Add employee" }).focus();
+  await user.tab();
+  expect(within(dialog).getByRole("button", { name: "Close form" })).toHaveFocus();
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(openButton).toHaveFocus();
+});
+
 it("shows the API conflict message in the employee form", async () => {
   const user = userEvent.setup();
   vi.mocked(createEmployee).mockRejectedValue(new Error("EMP-10001 already exists"));

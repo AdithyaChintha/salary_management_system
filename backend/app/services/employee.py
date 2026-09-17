@@ -135,23 +135,32 @@ class EmployeeService:
             ),
             currency=request.currency if request.currency is not None else current.currency,
         )
-        return self.repository.update(current.employee_id, write)
+        updated = self.repository.update(current.employee_id, write)
+        if updated is None:
+            raise InactiveEmployeeError(current.employee_id)
+        return updated
 
     def deactivate_employee(self, employee_id: str) -> EmployeeRecord:
         employee = self.fetch_employee(employee_id)
         if not employee.is_active:
             raise EmployeeStateError(f"Employee {employee.employee_id} is already inactive")
-        return self.repository.set_active(
+        updated = self.repository.set_active(
             employee.employee_id, is_active=False, changed_at=datetime.now(UTC)
         )
+        if updated is None:
+            raise EmployeeStateError(f"Employee {employee.employee_id} is already inactive")
+        return updated
 
     def reactivate_employee(self, employee_id: str) -> EmployeeRecord:
         employee = self.fetch_employee(employee_id)
         if employee.is_active:
             raise EmployeeStateError(f"Employee {employee.employee_id} is already active")
-        return self.repository.set_active(
+        updated = self.repository.set_active(
             employee.employee_id, is_active=True, changed_at=datetime.now(UTC)
         )
+        if updated is None:
+            raise EmployeeStateError(f"Employee {employee.employee_id} is already active")
+        return updated
 
     def recalculate_salary_usd(self, employee_id: str) -> EmployeeRecord:
         employee = self.fetch_employee(employee_id)
@@ -166,7 +175,10 @@ class EmployeeService:
             annual_salary_native=employee.annual_salary_native,
             currency=employee.currency,
         )
-        return self.repository.update(employee.employee_id, write)
+        updated = self.repository.update(employee.employee_id, write)
+        if updated is None:
+            raise InactiveEmployeeError(employee.employee_id)
+        return updated
 
     def validate_country_currency(self, country: str, currency: str) -> tuple[str, str]:
         normalized_country = self._required_text(country, "country").upper()

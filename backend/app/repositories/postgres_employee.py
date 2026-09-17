@@ -57,6 +57,8 @@ class PostgresEmployeeRepository:
         direction = "DESC" if query.sort_order == "desc" else "ASC"
         join = " FROM employees e JOIN countries c ON c.code = e.country"
         with self._connect() as connection, connection.cursor() as cursor:
+            # Keep the count and page rows from the same snapshot.
+            cursor.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
             cursor.execute("SELECT count(*) AS total" + join + where, params)
             count_row = cursor.fetchone()
             cursor.execute(
@@ -134,7 +136,7 @@ class PostgresEmployeeRepository:
                 raise DuplicateEmployeeIdConflict(employee.employee_id) from error
             raise
 
-    def update(self, employee_id: str, employee: EmployeeWrite) -> EmployeeRecord:
+    def update(self, employee_id: str, employee: EmployeeWrite) -> EmployeeRecord | None:
         with self._connect() as connection, connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -147,7 +149,7 @@ class PostgresEmployeeRepository:
                     currency = %s,
                     salary_usd = %s,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE employee_id = %s
+                WHERE employee_id = %s AND is_active = TRUE
                 RETURNING *
                 """,
                 (
@@ -162,26 +164,24 @@ class PostgresEmployeeRepository:
                 ),
             )
             row = cursor.fetchone()
-            assert row is not None
-            return self._to_record(row)
+            return self._to_record(row) if row else None
 
     def set_active(
         self, employee_id: str, *, is_active: bool, changed_at: datetime
-    ) -> EmployeeRecord:
+    ) -> EmployeeRecord | None:
         deactivated_at = None if is_active else changed_at
         with self._connect() as connection, connection.cursor() as cursor:
             cursor.execute(
                 """
                 UPDATE employees
                 SET is_active = %s, deactivated_at = %s, updated_at = %s
-                WHERE employee_id = %s
+                WHERE employee_id = %s AND is_active = %s
                 RETURNING *
                 """,
-                (is_active, deactivated_at, changed_at, employee_id),
+                (is_active, deactivated_at, changed_at, employee_id, not is_active),
             )
             row = cursor.fetchone()
-            assert row is not None
-            return self._to_record(row)
+            return self._to_record(row) if row else None
 
     def _connect(self) -> psycopg.Connection[dict[str, Any]]:
         return psycopg.connect(self.database_url, row_factory=dict_row)
