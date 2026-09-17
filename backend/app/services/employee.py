@@ -70,7 +70,14 @@ class EmployeeService:
         self.repository = repository
 
     def list_employees(self, query: EmployeeListQuery) -> EmployeePage:
-        if query.sort_by not in {"name", "employee_id", "salary_usd", "created_at"}:
+        if query.sort_by not in {
+            "name",
+            "employee_id",
+            "salary_usd",
+            "country",
+            "department",
+            "created_at",
+        }:
             raise InvalidEmployeeError("Unsupported sort_by value")
         if query.sort_order not in {"asc", "desc"}:
             raise InvalidEmployeeError("sort_order must be asc or desc")

@@ -51,5 +51,7 @@ class EmployeeFilters(BaseModel):
     max_salary_usd: Decimal | None = Field(default=None, ge=0)
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=25, ge=1, le=100)
-    sort_by: Literal["name", "employee_id", "salary_usd", "created_at"] = "name"
+    sort_by: Literal["name", "employee_id", "salary_usd", "country", "department", "created_at"] = (
+        "name"
+    )
     sort_order: Literal["asc", "desc"] = "asc"

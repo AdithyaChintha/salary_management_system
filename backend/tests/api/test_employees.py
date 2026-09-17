@@ -128,3 +128,62 @@ def test_list_filters_and_pagination(employee_client: TestClient) -> None:
     inactive = employee_client.get("/api/v1/employees", params={"is_active": "false"})
     assert inactive.status_code == 200
     assert [item["employee_id"] for item in inactive.json()["items"]] == ["EMP-001"]
+
+
+def test_country_department_sort_and_100_row_page(employee_client: TestClient) -> None:
+    for employee_id, country, department in (
+        ("EMP-001", "US", "Finance"),
+        ("EMP-002", "IN", "Engineering"),
+        ("EMP-003", "US", "Engineering"),
+    ):
+        response = employee_client.post(
+            "/api/v1/employees",
+            json={
+                **employee_payload(),
+                "employee_id": employee_id,
+                "country": country,
+                "currency": "USD" if country == "US" else "INR",
+                "department": department,
+            },
+        )
+        assert response.status_code == 201
+
+    by_country = employee_client.get(
+        "/api/v1/employees", params={"sort_by": "country", "page_size": 100}
+    )
+    assert by_country.status_code == 200
+    assert by_country.json()["page_size"] == 100
+    assert [item["employee_id"] for item in by_country.json()["items"]] == [
+        "EMP-002",
+        "EMP-001",
+        "EMP-003",
+    ]
+
+    by_department = employee_client.get(
+        "/api/v1/employees", params={"sort_by": "department", "sort_order": "desc"}
+    )
+    assert [item["department"] for item in by_department.json()["items"]] == [
+        "Finance",
+        "Engineering",
+        "Engineering",
+    ]
+
+
+def test_unexpected_api_error_is_structured_without_leaking_details() -> None:
+    from app.api.employees import get_employee_service
+    from app.main import app
+
+    def broken_service():
+        raise RuntimeError("private database detail")
+
+    app.dependency_overrides[get_employee_service] = broken_service
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/v1/employees/EMP-001")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "error": {"code": "internal_error", "message": "Unexpected server error"}
+    }

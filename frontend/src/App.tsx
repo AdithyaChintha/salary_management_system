@@ -336,8 +336,28 @@ export function App() {
                               : "↕"}
                           </button>
                         </th>
-                        <th>Country</th>
-                        <th>Department</th>
+                        <th
+                          aria-sort={
+                            query.sort_by === "country"
+                              ? query.sort_order === "asc"
+                                ? "ascending"
+                                : "descending"
+                              : "none"
+                          }
+                        >
+                          <button onClick={() => sort("country")}>Country</button>
+                        </th>
+                        <th
+                          aria-sort={
+                            query.sort_by === "department"
+                              ? query.sort_order === "asc"
+                                ? "ascending"
+                                : "descending"
+                              : "none"
+                          }
+                        >
+                          <button onClick={() => sort("department")}>Department</button>
+                        </th>
                         <th>Role</th>
                         <th
                           aria-sort={
@@ -453,6 +473,7 @@ export function App() {
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="50">50</option>
+                        <option value="100">100</option>
                       </select>
                     </label>
                     <button

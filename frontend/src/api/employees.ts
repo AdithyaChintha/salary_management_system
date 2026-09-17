@@ -37,7 +37,7 @@ export type EmployeeQuery = {
   max_salary_usd: string;
   page: number;
   page_size: number;
-  sort_by: "name" | "employee_id" | "salary_usd" | "created_at";
+  sort_by: "name" | "employee_id" | "salary_usd" | "country" | "department" | "created_at";
   sort_order: "asc" | "desc";
 };
 

@@ -52,6 +52,8 @@ class PostgresEmployeeRepository:
             "name": "e.name",
             "employee_id": "e.employee_id",
             "salary_usd": "e.salary_usd",
+            "country": "c.name",
+            "department": "e.department",
             "created_at": "e.created_at",
         }[query.sort_by]
         direction = "DESC" if query.sort_order == "desc" else "ASC"

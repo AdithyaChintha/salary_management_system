@@ -67,6 +67,14 @@ it("loads employees and sends filters and sorting to the server", async () => {
   await waitFor(() =>
     expect(vi.mocked(listEmployees).mock.lastCall?.[0]).toMatchObject({ sort_by: "salary_usd" }),
   );
+  fireEvent.click(screen.getByRole("button", { name: "Country" }));
+  await waitFor(() =>
+    expect(vi.mocked(listEmployees).mock.lastCall?.[0]).toMatchObject({ sort_by: "country" }),
+  );
+  fireEvent.change(screen.getByLabelText(/rows per page/i), { target: { value: "100" } });
+  await waitFor(() =>
+    expect(vi.mocked(listEmployees).mock.lastCall?.[0]).toMatchObject({ page_size: 100 }),
+  );
 });
 
 it("sends search, status, and pagination changes to the server", async () => {
