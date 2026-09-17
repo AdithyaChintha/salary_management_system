@@ -1,3 +1,5 @@
+import { request } from "./client";
+
 export type Employee = {
   id: number;
   employee_id: string;
@@ -38,41 +40,6 @@ export type EmployeeQuery = {
   sort_by: "name" | "employee_id" | "salary_usd" | "created_at";
   sort_order: "asc" | "desc";
 };
-
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1").replace(
-  /\/$/,
-  "",
-);
-
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
-    });
-  } catch {
-    throw new ApiError("Could not reach the API. Check that the backend is running.", 0);
-  }
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    const detail = body?.error?.details?.[0]?.message;
-    const message = body?.error?.message || detail || `Request failed (${response.status}).`;
-    throw new ApiError(detail && message === "Invalid request" ? detail : message, response.status);
-  }
-  return response.json() as Promise<T>;
-}
 
 export function listEmployees(query: EmployeeQuery, signal?: AbortSignal): Promise<EmployeePage> {
   const params = new URLSearchParams();

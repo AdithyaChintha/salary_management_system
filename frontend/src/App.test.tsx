@@ -47,8 +47,14 @@ beforeEach(() => {
   vi.mocked(setEmployeeActive).mockResolvedValue(employee);
 });
 
+function renderEmployeeScreen() {
+  const view = render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Employees" }));
+  return view;
+}
+
 it("loads employees and sends filters and sorting to the server", async () => {
-  render(<App />);
+  renderEmployeeScreen();
   expect(await screen.findByText("Rahul Sharma")).toBeInTheDocument();
   expect(vi.mocked(listEmployees).mock.calls[0][0]).toMatchObject({ is_active: "true", page: 1 });
 
@@ -71,7 +77,7 @@ it("sends search, status, and pagination changes to the server", async () => {
     page: 1,
     page_size: 10,
   });
-  render(<App />);
+  renderEmployeeScreen();
   await screen.findByText("Rahul Sharma");
   await user.type(screen.getByLabelText("Search by name or employee ID"), "Rahul");
   await waitFor(() =>
@@ -89,7 +95,7 @@ it("sends search, status, and pagination changes to the server", async () => {
 
 it("creates an employee with currency derived from country", async () => {
   const user = userEvent.setup();
-  render(<App />);
+  renderEmployeeScreen();
   await screen.findByText("Rahul Sharma");
   await user.click(screen.getByRole("button", { name: /add employee/i }));
   const dialog = screen.getByRole("dialog");
@@ -113,7 +119,7 @@ it("creates an employee with currency derived from country", async () => {
 
 it("keeps employee ID fixed during edit", async () => {
   const user = userEvent.setup();
-  render(<App />);
+  renderEmployeeScreen();
   await screen.findByText("Rahul Sharma");
   await user.click(screen.getByRole("button", { name: "Edit" }));
   const dialog = screen.getByRole("dialog");
@@ -133,7 +139,7 @@ it("keeps employee ID fixed during edit", async () => {
 it("shows the API conflict message in the employee form", async () => {
   const user = userEvent.setup();
   vi.mocked(createEmployee).mockRejectedValue(new Error("EMP-10001 already exists"));
-  render(<App />);
+  renderEmployeeScreen();
   await screen.findByText("Rahul Sharma");
   await user.click(screen.getByRole("button", { name: /add employee/i }));
   const dialog = screen.getByRole("dialog");
@@ -148,7 +154,7 @@ it("shows the API conflict message in the employee form", async () => {
 it("confirms deactivation and allows inactive employees to be reactivated", async () => {
   const user = userEvent.setup();
   const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-  const view = render(<App />);
+  const view = renderEmployeeScreen();
   await screen.findByText("Rahul Sharma");
   await user.click(screen.getByRole("button", { name: "Deactivate" }));
   expect(confirm).toHaveBeenCalled();
@@ -160,7 +166,7 @@ it("confirms deactivation and allows inactive employees to be reactivated", asyn
     page: 1,
     page_size: 10,
   });
-  render(<App />);
+  renderEmployeeScreen();
   await screen.findByText("Rahul Sharma");
   await user.click(screen.getByRole("button", { name: "Reactivate" }));
   await waitFor(() => expect(setEmployeeActive).toHaveBeenCalledWith("EMP-001", true));
@@ -169,11 +175,11 @@ it("confirms deactivation and allows inactive employees to be reactivated", asyn
 
 it("shows empty and API error states", async () => {
   vi.mocked(listEmployees).mockResolvedValueOnce({ items: [], total: 0, page: 1, page_size: 10 });
-  const view = render(<App />);
+  const view = renderEmployeeScreen();
   expect(await screen.findByText("No employees found")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
   view.unmount();
   vi.mocked(listEmployees).mockRejectedValueOnce(new Error("Backend unavailable"));
-  render(<App />);
+  renderEmployeeScreen();
   expect(await screen.findByRole("alert")).toHaveTextContent("Backend unavailable");
 });

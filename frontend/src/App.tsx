@@ -8,6 +8,7 @@ import {
   type EmployeeQuery,
 } from "./api/employees";
 import { COUNTRIES, DEPARTMENTS, countryName, usd } from "./employee-data";
+import { Dashboard } from "./Dashboard";
 import { EmployeeForm, type FormMode } from "./EmployeeForm";
 
 const INITIAL_QUERY: EmployeeQuery = {
@@ -24,6 +25,7 @@ const INITIAL_QUERY: EmployeeQuery = {
 };
 
 export function App() {
+  const [view, setView] = useState<"employees" | "dashboard">("dashboard");
   const [query, setQuery] = useState<EmployeeQuery>(INITIAL_QUERY);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState<EmployeePage | null>(null);
@@ -44,6 +46,7 @@ export function App() {
   }, [search]);
 
   useEffect(() => {
+    if (view !== "employees") return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
@@ -65,7 +68,7 @@ export function App() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [query, revision]);
+  }, [query, revision, view]);
 
   const total = page?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / query.page_size));
@@ -139,9 +142,18 @@ export function App() {
           </span>
         </div>
         <div className="sidebar-section">WORKSPACE</div>
-        <div className="nav-item active">
+        <button
+          className={`nav-item ${view === "dashboard" ? "active" : ""}`}
+          onClick={() => setView("dashboard")}
+        >
+          <span aria-hidden="true">◫</span> Analytics
+        </button>
+        <button
+          className={`nav-item ${view === "employees" ? "active" : ""}`}
+          onClick={() => setView("employees")}
+        >
           <span aria-hidden="true">▦</span> Employees
-        </div>
+        </button>
         <div className="sidebar-bottom">
           <span className="status-dot" /> Internal management workspace
         </div>
@@ -150,289 +162,303 @@ export function App() {
       <main className="main-content">
         <header className="topbar">
           <span>
-            People / <strong>Employees</strong>
+            Workspace / <strong>{view === "dashboard" ? "Analytics" : "Employees"}</strong>
           </span>
           <span>Salary Management System</span>
         </header>
         <div className="content-wrap">
-          <div className="page-heading">
-            <div>
-              <span className="eyebrow">WORKFORCE DIRECTORY</span>
-              <h1>Employees</h1>
-              <p>Manage employee records, salaries, and active status in one place.</p>
-            </div>
-            <button
-              className="button button-primary"
-              onClick={() => setFormMode({ kind: "create" })}
-            >
-              ＋ Add employee
-            </button>
-          </div>
-          {notice && (
-            <div className="notice success" role="status">
-              {notice}
-              <button aria-label="Dismiss notification" onClick={() => setNotice("")}>
-                ×
-              </button>
-            </div>
-          )}
-          {error && (
-            <div className="notice error" role="alert">
-              {error}
-              <button aria-label="Dismiss error" onClick={() => setError("")}>
-                ×
-              </button>
-            </div>
-          )}
-
-          <section className="panel" aria-label="Employee directory">
-            <div className="panel-header">
-              <div>
-                <h2>Employee directory</h2>
-                <p>Search and filter your workforce records.</p>
-              </div>
-              <span className="count-pill">{total} records</span>
-            </div>
-            <div className="filters">
-              <label className="search-field">
-                <span className="visually-hidden">Search by name or employee ID</span>
-                <span aria-hidden="true">⌕</span>
-                <input
-                  aria-label="Search by name or employee ID"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search name or employee ID"
-                />
-              </label>
-              <label>
-                <span className="visually-hidden">Filter by country</span>
-                <select
-                  value={query.country}
-                  onChange={(event) => filter("country", event.target.value)}
-                >
-                  <option value="">All countries</option>
-                  {COUNTRIES.map((country) => (
-                    <option key={country.code} value={country.code}>
-                      {country.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="visually-hidden">Filter by department</span>
-                <select
-                  value={query.department}
-                  onChange={(event) => filter("department", event.target.value)}
-                >
-                  <option value="">All departments</option>
-                  {DEPARTMENTS.map((department) => (
-                    <option key={department} value={department}>
-                      {department}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="visually-hidden">Filter by status</span>
-                <select
-                  value={query.is_active}
-                  onChange={(event) => filter("is_active", event.target.value)}
-                >
-                  <option value="true">Active only</option>
-                  <option value="false">Inactive only</option>
-                  <option value="">All statuses</option>
-                </select>
-              </label>
-            </div>
-            <div className="secondary-filters">
-              <span>USD salary range</span>
-              <label>
-                <span className="visually-hidden">Minimum USD salary</span>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Minimum"
-                  value={query.min_salary_usd}
-                  onChange={(event) => filter("min_salary_usd", event.target.value)}
-                />
-              </label>
-              <span>—</span>
-              <label>
-                <span className="visually-hidden">Maximum USD salary</span>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Maximum"
-                  value={query.max_salary_usd}
-                  onChange={(event) => filter("max_salary_usd", event.target.value)}
-                />
-              </label>
-              {hasFilters && (
+          {view === "dashboard" ? (
+            <Dashboard />
+          ) : (
+            <>
+              <div className="page-heading">
+                <div>
+                  <span className="eyebrow">WORKFORCE DIRECTORY</span>
+                  <h1>Employees</h1>
+                  <p>Manage employee records, salaries, and active status in one place.</p>
+                </div>
                 <button
-                  className="clear-button"
-                  onClick={() => {
-                    setSearch("");
-                    setQuery(INITIAL_QUERY);
-                  }}
+                  className="button button-primary"
+                  onClick={() => setFormMode({ kind: "create" })}
                 >
-                  Clear filters
+                  ＋ Add employee
                 </button>
-              )}
-            </div>
-
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      <button onClick={() => sort("name")}>
-                        Employee{" "}
-                        {query.sort_by === "name" ? (query.sort_order === "asc" ? "↑" : "↓") : "↕"}
-                      </button>
-                    </th>
-                    <th>
-                      <button onClick={() => sort("employee_id")}>
-                        Employee ID{" "}
-                        {query.sort_by === "employee_id"
-                          ? query.sort_order === "asc"
-                            ? "↑"
-                            : "↓"
-                          : "↕"}
-                      </button>
-                    </th>
-                    <th>Country</th>
-                    <th>Department</th>
-                    <th>Role</th>
-                    <th>
-                      <button onClick={() => sort("salary_usd")}>
-                        Salary (USD){" "}
-                        {query.sort_by === "salary_usd"
-                          ? query.sort_order === "asc"
-                            ? "↑"
-                            : "↓"
-                          : "↕"}
-                      </button>
-                    </th>
-                    <th>Status</th>
-                    <th className="actions-heading">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {!loading &&
-                    page?.items.map((employee) => (
-                      <tr key={employee.employee_id}>
-                        <td>
-                          <div className="employee-cell">
-                            <span className="avatar">
-                              {employee.name.slice(0, 1).toUpperCase()}
-                            </span>
-                            <strong>{employee.name}</strong>
-                          </div>
-                        </td>
-                        <td className="mono">{employee.employee_id}</td>
-                        <td>{countryName(employee.country)}</td>
-                        <td>{employee.department}</td>
-                        <td>{employee.role}</td>
-                        <td className="money">{usd(employee.salary_usd)}</td>
-                        <td>
-                          <span
-                            className={`status-badge ${employee.is_active ? "status-active" : "status-inactive"}`}
-                          >
-                            {employee.is_active ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="row-actions">
-                            {employee.is_active && (
-                              <button onClick={() => setFormMode({ kind: "edit", employee })}>
-                                Edit
-                              </button>
-                            )}
-                            <button
-                              disabled={busyId === employee.employee_id}
-                              onClick={() => changeStatus(employee)}
-                            >
-                              {busyId === employee.employee_id
-                                ? "Working…"
-                                : employee.is_active
-                                  ? "Deactivate"
-                                  : "Reactivate"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-              {loading && (
-                <div className="table-state" role="status">
-                  <span className="spinner" />
-                  Loading employees…
-                </div>
-              )}
-              {!loading && !error && page?.items.length === 0 && (
-                <div className="table-state empty-state">
-                  <span className="empty-icon">⌕</span>
-                  <strong>No employees found</strong>
-                  <p>
-                    {hasFilters
-                      ? "Try adjusting your search or filters."
-                      : "Add your first employee to get started."}
-                  </p>
-                </div>
-              )}
-              {!loading && error && (
-                <div className="table-state empty-state">
-                  <strong>Unable to load employees</strong>
-                  <button
-                    className="button button-quiet"
-                    onClick={() => setRevision((value) => value + 1)}
-                  >
-                    Retry
+              </div>
+              {notice && (
+                <div className="notice success" role="status">
+                  {notice}
+                  <button aria-label="Dismiss notification" onClick={() => setNotice("")}>
+                    ×
                   </button>
                 </div>
               )}
-            </div>
-            <footer className="table-footer">
-              <span>
-                Showing {first}–{last} of {total} employees
-              </span>
-              <div className="pager">
-                <label>
-                  Rows per page{" "}
-                  <select
-                    value={query.page_size}
-                    onChange={(event) => filter("page_size", Number(event.target.value))}
-                  >
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                  </select>
-                </label>
-                <button
-                  aria-label="Previous page"
-                  disabled={query.page <= 1 || loading}
-                  onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}
-                >
-                  ‹
-                </button>
-                <span>
-                  Page {query.page} of {totalPages}
-                </span>
-                <button
-                  aria-label="Next page"
-                  disabled={query.page >= totalPages || loading}
-                  onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}
-                >
-                  ›
-                </button>
-              </div>
-            </footer>
-          </section>
-          <p className="page-footnote">
-            Salary values are shown in USD for comparison. Edit an employee to view or change their
-            native salary.
-          </p>
+              {error && (
+                <div className="notice error" role="alert">
+                  {error}
+                  <button aria-label="Dismiss error" onClick={() => setError("")}>
+                    ×
+                  </button>
+                </div>
+              )}
+
+              <section className="panel" aria-label="Employee directory">
+                <div className="panel-header">
+                  <div>
+                    <h2>Employee directory</h2>
+                    <p>Search and filter your workforce records.</p>
+                  </div>
+                  <span className="count-pill">{total} records</span>
+                </div>
+                <div className="filters">
+                  <label className="search-field">
+                    <span className="visually-hidden">Search by name or employee ID</span>
+                    <span aria-hidden="true">⌕</span>
+                    <input
+                      aria-label="Search by name or employee ID"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Search name or employee ID"
+                    />
+                  </label>
+                  <label>
+                    <span className="visually-hidden">Filter by country</span>
+                    <select
+                      value={query.country}
+                      onChange={(event) => filter("country", event.target.value)}
+                    >
+                      <option value="">All countries</option>
+                      {COUNTRIES.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="visually-hidden">Filter by department</span>
+                    <select
+                      value={query.department}
+                      onChange={(event) => filter("department", event.target.value)}
+                    >
+                      <option value="">All departments</option>
+                      {DEPARTMENTS.map((department) => (
+                        <option key={department} value={department}>
+                          {department}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="visually-hidden">Filter by status</span>
+                    <select
+                      value={query.is_active}
+                      onChange={(event) => filter("is_active", event.target.value)}
+                    >
+                      <option value="true">Active only</option>
+                      <option value="false">Inactive only</option>
+                      <option value="">All statuses</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="secondary-filters">
+                  <span>USD salary range</span>
+                  <label>
+                    <span className="visually-hidden">Minimum USD salary</span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Minimum"
+                      value={query.min_salary_usd}
+                      onChange={(event) => filter("min_salary_usd", event.target.value)}
+                    />
+                  </label>
+                  <span>—</span>
+                  <label>
+                    <span className="visually-hidden">Maximum USD salary</span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Maximum"
+                      value={query.max_salary_usd}
+                      onChange={(event) => filter("max_salary_usd", event.target.value)}
+                    />
+                  </label>
+                  {hasFilters && (
+                    <button
+                      className="clear-button"
+                      onClick={() => {
+                        setSearch("");
+                        setQuery(INITIAL_QUERY);
+                      }}
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>
+                          <button onClick={() => sort("name")}>
+                            Employee{" "}
+                            {query.sort_by === "name"
+                              ? query.sort_order === "asc"
+                                ? "↑"
+                                : "↓"
+                              : "↕"}
+                          </button>
+                        </th>
+                        <th>
+                          <button onClick={() => sort("employee_id")}>
+                            Employee ID{" "}
+                            {query.sort_by === "employee_id"
+                              ? query.sort_order === "asc"
+                                ? "↑"
+                                : "↓"
+                              : "↕"}
+                          </button>
+                        </th>
+                        <th>Country</th>
+                        <th>Department</th>
+                        <th>Role</th>
+                        <th>
+                          <button onClick={() => sort("salary_usd")}>
+                            Salary (USD){" "}
+                            {query.sort_by === "salary_usd"
+                              ? query.sort_order === "asc"
+                                ? "↑"
+                                : "↓"
+                              : "↕"}
+                          </button>
+                        </th>
+                        <th>Status</th>
+                        <th className="actions-heading">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {!loading &&
+                        page?.items.map((employee) => (
+                          <tr key={employee.employee_id}>
+                            <td>
+                              <div className="employee-cell">
+                                <span className="avatar">
+                                  {employee.name.slice(0, 1).toUpperCase()}
+                                </span>
+                                <strong>{employee.name}</strong>
+                              </div>
+                            </td>
+                            <td className="mono">{employee.employee_id}</td>
+                            <td>{countryName(employee.country)}</td>
+                            <td>{employee.department}</td>
+                            <td>{employee.role}</td>
+                            <td className="money">{usd(employee.salary_usd)}</td>
+                            <td>
+                              <span
+                                className={`status-badge ${employee.is_active ? "status-active" : "status-inactive"}`}
+                              >
+                                {employee.is_active ? "Active" : "Inactive"}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="row-actions">
+                                {employee.is_active && (
+                                  <button onClick={() => setFormMode({ kind: "edit", employee })}>
+                                    Edit
+                                  </button>
+                                )}
+                                <button
+                                  disabled={busyId === employee.employee_id}
+                                  onClick={() => changeStatus(employee)}
+                                >
+                                  {busyId === employee.employee_id
+                                    ? "Working…"
+                                    : employee.is_active
+                                      ? "Deactivate"
+                                      : "Reactivate"}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                  {loading && (
+                    <div className="table-state" role="status">
+                      <span className="spinner" />
+                      Loading employees…
+                    </div>
+                  )}
+                  {!loading && !error && page?.items.length === 0 && (
+                    <div className="table-state empty-state">
+                      <span className="empty-icon">⌕</span>
+                      <strong>No employees found</strong>
+                      <p>
+                        {hasFilters
+                          ? "Try adjusting your search or filters."
+                          : "Add your first employee to get started."}
+                      </p>
+                    </div>
+                  )}
+                  {!loading && error && (
+                    <div className="table-state empty-state">
+                      <strong>Unable to load employees</strong>
+                      <button
+                        className="button button-quiet"
+                        onClick={() => setRevision((value) => value + 1)}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <footer className="table-footer">
+                  <span>
+                    Showing {first}–{last} of {total} employees
+                  </span>
+                  <div className="pager">
+                    <label>
+                      Rows per page{" "}
+                      <select
+                        value={query.page_size}
+                        onChange={(event) => filter("page_size", Number(event.target.value))}
+                      >
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                      </select>
+                    </label>
+                    <button
+                      aria-label="Previous page"
+                      disabled={query.page <= 1 || loading}
+                      onClick={() =>
+                        setQuery((current) => ({ ...current, page: current.page - 1 }))
+                      }
+                    >
+                      ‹
+                    </button>
+                    <span>
+                      Page {query.page} of {totalPages}
+                    </span>
+                    <button
+                      aria-label="Next page"
+                      disabled={query.page >= totalPages || loading}
+                      onClick={() =>
+                        setQuery((current) => ({ ...current, page: current.page + 1 }))
+                      }
+                    >
+                      ›
+                    </button>
+                  </div>
+                </footer>
+              </section>
+              <p className="page-footnote">
+                Salary values are shown in USD for comparison. Edit an employee to view or change
+                their native salary.
+              </p>
+            </>
+          )}
         </div>
       </main>
       {formMode && (
